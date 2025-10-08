@@ -1,3 +1,3 @@
-﻿  Assembling avx512.asm...
-  main.cpp
-  AVX512 Code.vcxproj -> C:\Users\Lenovo\Desktop\SneakySnake AVX\AVX512 Code\x64\Debug\AVX512 Code.exe
+﻿  main.cpp
+main.obj : error LNK2019: unresolved external symbol SneakySnake referenced in function main
+C:\Users\janela\source\CJPizza\SneakySnake-AVX512\x64\Debug\AVX512 Code.exe : fatal error LNK1120: 1 unresolved externals
