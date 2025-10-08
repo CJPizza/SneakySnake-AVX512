@@ -1,4 +1,8 @@
 #include <iostream>
+ 
+// nasm -f win64 avx512.asm -o sneaky.obj
+// g++ sneaky.obj main.cpp -o test.exe
+// test.exe
 
 // this the assembly function
 extern "C" int SneakySnake(int ReadLength, char* RefSeq, char* ReadSeq, int EditThreshold, int KmerSize, int DebugMode, int IterationNo);

@@ -1,4 +1,4 @@
-%include "io.inc"
+; %include "io.inc"
 
 section .text
 default rel
@@ -10,8 +10,6 @@ section .data
  rejected dq 0				; for counting how many sequences have been rejected
 
 global SneakySnake
-global main
-
 ; the main prototype:
 ; int SneakySnake(int ReadLength, char* RefSeq, char* ReadSeq, int EditThreshold, int KmerSize, int DebugMode, int IterationNo)
 ; parameters and their corresponding registers (I AM NOT ENTIRELY SURE WITH THIS):
@@ -24,9 +22,9 @@ global main
 ; int IterationNo	= [rsp + 8]		; i think this is correct cause a 7th parameter doesnt have an explicit register, so just pass it onto the stack
 ; return value		= eax
 
-Sneakynake:
+SneakySnake:
 	push rbp
-	move rbp, rsp
+	mov rbp, rsp
 	sub rsp, 32			; shadow space
 
 	push rdi			; save parameters
@@ -56,13 +54,6 @@ Sneakynake:
 .cleanup:
 	; this just for cleanup before returning
 	add rsp, 32
-	move rsp, rbp
+	mov rsp, rbp
 	pop rbp
-	ret
-
-main:
-	; this is mainly just for testing, this can be removed after everything has been verified
-
-
-	xor eax, eax
 	ret
