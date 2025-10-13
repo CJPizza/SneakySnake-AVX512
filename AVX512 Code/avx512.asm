@@ -16,55 +16,58 @@ global SneakySnake
 global main
 
 ; the main prototype:
-; int SneakySnake(int ReadLength, char* RefSeq, char* ReadSeq, int EditThreshold, int KmerSize, int DebugMode, int IterationNo)
+; int SneakySnake(int ReadLength, char* RefSeq, char* ReadSeq, int EditThreshold, int IterationNo)
 ; parameters and their corresponding registers (I AM NOT ENTIRELY SURE WITH THIS):
-; int ReadLength	= rdi
-; char* RefSeq		= rsi
-; char* ReadSeq		= rdx
-; int EditThreshold = rcx
-; int KmerSize		= r8
-; int DebugMode		= r9
-; int IterationNo	= [rsp + 8]		; i think this is correct cause a 7th parameter doesnt have an explicit register, so just pass it onto the stack
-; return value		= eax
+; int ReadLength =		rcx
+; char* ReadSeq =		rdx
+; char* RefSeq =		r8
+; int EditThreshold =	r9
+; int IterationNo =		[rsp + 8] 
+; return value =		r/eax
 
 Sneakynake:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 32			; shadow space
 
 	push rdi			; save parameters
 	push rsi			; dont know if we need these for the project, just in case lang
 	push rdx
+	push r12
+	push r13
+	push rbx
+
+	sub rsp, 32			; shadow space
 
 	; saving arguments into registers that we wont overwrite
-	mov  r14, r9            ; DebugMode
-	mov  r9,  rdi           ; ReadLength
-	mov  r10, rsi           ; RefSeq
-	mov  r11, rdx           ; ReadSeq
-	mov  r12, rcx           ; EditThreshold
-	mov  r13, r8            ; KmerSize
-	mov  r15, [rbp + 16]   ; IterationNo, [rbp + 16] since we pushed it onto the stack
+	mov r9, rcx			; ReadLength
+	mov r10, rdx		; RefSeq
+	mov r11, r8			; ReadSeq
+	mov r12, r9			; EditThreshold
+	mov r13, [rsp + 8]	; IterationNo
 
 	; r9 = ReadLength
 	; r10 = RefSeq
 	; r11 = ReadSeq
 	; r12 = EditThreshold
-	; r13 = KmerSize
-	; r14 = DebugMode
-	; r15 = IterationNo
+	; r13 = IterationNo
 
-	; initializing counters
+	; counter for the amount of reads processed
 	inc qword [processed_counter]		; for counting how many sequences have been processed
 
 	; computing byte length of the read
 	; since 8 bits is the smallest can we can work on
 	; we need to divide the read length by 2 since we're working on 4-bit nucleotides
-	mov rdx, r12
-	shr rdx, 1			; divides readlength by 2
+	mov rdx, r9
+	shr rdx, 1				; divides readlength by 2
 	mov qword [read_bytes], rdx
+
+	; pointers
+	xor rdx, rdx				; index for the read
 
 .mainloop:
 	; main loop where we compare the read to the reference
+	mov r8, qword [read_bytes]	; total number of bytes to process
+	cmp rdx, r8
 
 	; termination condition
 
@@ -98,3 +101,4 @@ main:
 
 	xor eax, eax
 	ret
+
