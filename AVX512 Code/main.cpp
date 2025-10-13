@@ -24,6 +24,7 @@ typedef struct {
 	char* buf;
 } pipeline_t;
 
+
 typedef struct {
 	int n_lines;
 	int DebugMode, KmerSize, ReadLength, IterationNo, EditThreshold;
