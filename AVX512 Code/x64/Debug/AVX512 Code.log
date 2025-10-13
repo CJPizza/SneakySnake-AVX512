@@ -1,3 +1,3 @@
-﻿  main.cpp
-main.obj : error LNK2019: unresolved external symbol SneakySnake referenced in function main
-C:\Users\janela\source\CJPizza\SneakySnake-AVX512\x64\Debug\AVX512 Code.exe : fatal error LNK1120: 1 unresolved externals
+﻿  main.c
+C:\Users\ASUS\source\repos\SneakySnake-AVX512\AVX512 Code\main.c(18,15): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  AVX512 Code.vcxproj -> C:\Users\ASUS\Source\Repos\SneakySnake-AVX512\x64\Debug\AVX512 Code.exe

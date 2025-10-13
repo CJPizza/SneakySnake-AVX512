@@ -8,22 +8,26 @@ section .data
  processed_counter dq 0		; this just for counting how many sequences have been processed
  accepted dq 0				; for counting how many sequences have been accepted
  rejected dq 0				; for counting how many sequences have been rejected
+ mismatches dq 0			; for counting how many mismatches have been found
+ matches dq 0				; for counting how many matches have been found
+ read_bytes dq 0			; for counting how many bytes have been read (for the loop)
 
 global SneakySnake
 ; the main prototype:
 ; int SneakySnake(int ReadLength, char* RefSeq, char* ReadSeq, int EditThreshold, int KmerSize, int DebugMode, int IterationNo)
-; parameters and their corresponding registers (I AM NOT ENTIRELY SURE WITH THIS):
-; int ReadLength	= rdi
-; char* RefSeq		= rsi
-; char* ReadSeq		= rdx
-; int EditThreshold = rcx
-; int KmerSize		= r8
-; int DebugMode		= r9
-; int IterationNo	= [rsp + 8]		; i think this is correct cause a 7th parameter doesnt have an explicit register, so just pass it onto the stack
-; return value		= eax
+; parameters and their corresponding registers:
+; int ReadLength = rcx
+; char* ReadSeq = rdx
+; char* RefSeq = r8
+; int EditThreshold = r9
+; int KmerSize = [rsp + 8] --40h?
+; int DebugMode = [rsp + 16] -- 48h?
+; int IterationNo = [rsp + 24] -- 50h?
+; return value = eax
 
 SneakySnake:
 	push rbp
+	push rbx
 	mov rbp, rsp
 	sub rsp, 32			; shadow space
 
@@ -32,8 +36,7 @@ SneakySnake:
 	push rdx
 
 .arrange_reg: ;fix the registers long/short reads
-	vmovdqu zmm0, zmmword [rsi]	; load reference sequence into zmm0
-	vmovdqu zmm1, zmmword [rdx]	; load read sequence into zmm1
+	
 
 	;tail handling or smthn
 	

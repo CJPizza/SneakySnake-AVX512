@@ -7,15 +7,18 @@
 // g++ sneaky.obj main.cpp -o test.exe
 // test.exe
 
-extern "C" int SneakySnake(int ReadLength, char* RefSeq, char* ReadSeq, int EditThreshold, int KmerSize, int DebugMode, int IterationNo);
+extern void SneakySnake(int len, char* RefSeq, char* ReadSeq, int EditThreshold, int KmerSize, int DebugMode, int IterationNo);
 
 int main() {
     int i;
     int bit;
     char RefSeq[] = "ACGTNA";
-    char ReadSeq[] = "ACGTA";
-
+    char ReadSeq[] = "ACGTACGTACGTACGTN";
     int len = strlen(RefSeq);
+    int EditThreshold = 1;
+	int KmerSize = 4;
+	int DebugMode = 0;
+	int IterationNo = 1;
 
     printf("Original RefSeq: %s\n", RefSeq);
     printf("Original ReadSeq: %s\n\n", ReadSeq);
@@ -39,7 +42,12 @@ int main() {
     //    printf(" ");
     //}
 
-    int result = SneakySnake(readLen, ref, read, editThresh, kmerSize, debugMode, iterNo);
+    SneakySnake(len, RefSeq, ReadSeq, EditThreshold, KmerSize, DebugMode, IterationNo);
+
+    printf("After:  ");
+    for (i = 0; i < len; ++i) printf("%d ", (unsigned char)ReadSeq[i]);
+    printf("\n");
+    //int result = SneakySnake(len, RefSeq, ReadSeq, EditThreshold, KmerSize, DebugMode, IterationNo);
 
     return 0;
 }
