@@ -16,13 +16,13 @@ global SneakySnake
 global main
 
 ; the main prototype:
-; int SneakySnake(int ReadLength, char* RefSeq, char* ReadSeq, int EditThreshold, int IterationNo)
+; int SneakySnake(int ReadLength, char* ReadSeq, char* RefSeq, int EditThreshold, int IterationNo)
 ; parameters and their corresponding registers (I AM NOT ENTIRELY SURE WITH THIS):
 ; int ReadLength =		rcx
 ; char* ReadSeq =		rdx
 ; char* RefSeq =		r8
 ; int EditThreshold =	r9
-; int IterationNo =		[rsp + 8] 
+; int IterationNo =		[rbp + 8] 
 ; return value =		r/eax
 
 Sneakynake:
@@ -34,63 +34,106 @@ Sneakynake:
 	push rdx
 	push r12
 	push r13
+	push r14
+	push r15
 	push rbx
 
 	sub rsp, 32			; shadow space
 
 	; saving arguments into registers that we wont overwrite
-	mov r9, rcx			; ReadLength
-	mov r10, rdx		; RefSeq
-	mov r11, r8			; ReadSeq
-	mov r12, r9			; EditThreshold
-	mov r13, [rsp + 8]	; IterationNo
+	mov r11, rcx			; ReadLength
+	mov r12, rdx			; ReadSeq
+	mov r13, r8				; RefSeq
+	mov r14, r9				; EditThreshold
+	mov r15, [rbp + 40h]	; IterationNo
 
-	; r9 = ReadLength
-	; r10 = RefSeq
-	; r11 = ReadSeq
-	; r12 = EditThreshold
-	; r13 = IterationNo
+	; r11 = ReadLength
+	; r12 = ReadSeq
+	; r13 = RefSeq
+	; r14 = EditThreshold
+	; r15 = IterationNo
 
-	; counter for the amount of reads processed
-	inc qword [processed_counter]		; for counting how many sequences have been processed
+
+	;xor stuff here
+
 
 	; computing byte length of the read
 	; since 8 bits is the smallest can we can work on
 	; we need to divide the read length by 2 since we're working on 4-bit nucleotides
-	mov rdx, r9
+	mov rdx, r11		
 	shr rdx, 1				; divides readlength by 2
 	mov qword [read_bytes], rdx
 
-	; pointers
+	; pointers and counters
 	xor rdx, rdx				; index for the read
+	xor r9, r9					; offset for bytes
+	xor r10, r10				; counter for mismatches
+	xor rbx, rbx				; counter for matches
 
 .mainloop:
 	; main loop where we compare the read to the reference
-	mov r8, qword [read_bytes]	; total number of bytes to process
-	cmp rdx, r8
+	mov rcx, [read_bytes]	; rcx = 50
+	cmp r9, rcx				; compare offset with read bytes
+	jae .handle_tail		; if its false, continue the mainloop
 
-	; termination condition
+; ---------- MAIN DIAGONAL ---------------
+	; loading sequences into registers
+	vmovdqu8 zmm0, [r12] ;move read seq to zmm0
+	vmovdqu8 zmm1, [r13] ;move ref seq to zmm1
 
-	; create function for checking if all sequences have been processed
+	;get first and second half 
+	; cmp
+	; mask???
 
-	; counter for the processed sequences
-	inc qword [processed_counter]
 
-	; function to check if mismatches are within the edit distance threshold
+	
 
-	; create function for jumping to either accepted or rejected routines
+
+
+
+
+	; updating pointers and counters
+	inc qword [processed_counter]		; how many sequences has been processed
+	add r9, 64							; move onto the next byte
+	jmp .mainloop
+
+.handle_tail:
+	; this is for handling the remaining unused bits in the 512 bit registers
+	mov rcx, [read_bytes]
+	sub rcx, r9
+	test rcx, rcx
+	jz .check_mismatches
+
+	; FINISH THIS TAIL HANDLING
+
+.check_mismatches:
+	; checking if mismatches are within the edit distance threshold
+	mov rax, r10		; number of mismatches
+	cmp rax, r14		; compare with edit threshold
+	jle .accepted		; if less or equal, accepted
+	jg .rejected		; if greater, rejected
 
 .accepted:
 	inc qword [accepted]
-	jmp .mainloop
+	mov eax, 1			; return 1
+	jmp .cleanup
 
 .rejected:
 	inc qword [rejected]
-	jmp .mainloop
+	xor eax, eax		; return 0
+	jmp .cleanup
 
 .cleanup:
 	; this just for cleanup before returning
-	add rsp, 32
+	add rsp, 32			; restore shadow space
+	pop rbx				; restore registers
+	pop r15
+	pop r14
+	pop r13
+	pop r12
+	pop rdx	
+	pop rsi
+	pop rdi
 	move rsp, rbp
 	pop rbp
 	ret
