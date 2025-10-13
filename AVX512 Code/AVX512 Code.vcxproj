@@ -135,9 +135,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="preprocessing.cpp" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="avx512.asm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="preprocessing.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

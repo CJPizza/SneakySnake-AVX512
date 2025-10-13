@@ -31,7 +31,15 @@ SneakySnake:
 	push rsi			; dont know if we need these for the project, just in case lang
 	push rdx
 
-.mainloop:
+.arrange_reg: ;fix the registers long/short reads
+	vmovdqu zmm0, zmmword [rsi]	; load reference sequence into zmm0
+	vmovdqu zmm1, zmmword [rdx]	; load read sequence into zmm1
+
+	;tail handling or smthn
+	
+.main_diag:
+	
+
 	; main loop where we compare the read to the reference
 
 	; create function for checking if all sequences have been processed
@@ -42,6 +50,9 @@ SneakySnake:
 	; function to check if mismatches are within the edit distance threshold
 
 	; create function for jumping to either accepted or rejected routines
+
+.updown_diag:
+	
 
 .accepted:
 	inc qword [accepted]

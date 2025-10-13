@@ -1,5 +1,5 @@
 #include <iostream>
- 
+#include "preprocessing.h"
 // nasm -f win64 avx512.asm -o sneaky.obj
 // g++ sneaky.obj main.cpp -o test.exe
 // test.exe
@@ -40,6 +40,9 @@ int main() {
     std::cout << "KmerSize = " << kmerSize << "\n";
     std::cout << "DebugMode = " << debugMode << "\n";
     std::cout << "IterationNo = " << iterNo << "\n\n";
+
+    //preprocessing
+	preprocess(ref, read, readLen);
 
     int result = SneakySnake(readLen, ref, read, editThresh, kmerSize, debugMode, iterNo);
 
