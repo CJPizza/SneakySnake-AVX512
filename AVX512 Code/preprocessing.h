@@ -16,7 +16,7 @@ void preprocess(char* RefSeq, char* ReadSeq, int ReadLength)
         unsigned char base1_r = ENCODE_BASE(ReadSeq[i]);
         unsigned char base1_f = ENCODE_BASE(RefSeq[i]);
 
-        unsigned char base2_r = 0;
+        unsigned char base2_r = 0;             
         unsigned char base2_f = 0;
 
         if (i + 1 < ReadLength) {

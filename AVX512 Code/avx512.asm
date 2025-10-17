@@ -38,7 +38,7 @@ Sneakynake:
 	push r15
 	push rbx
 
-	sub rsp, 32			; shadow space
+	sub rsp, 32			; shadow space -- remove this cuz we r callee
 
 	; saving arguments into registers that we wont overwrite
 	mov r11, rcx			; ReadLength
@@ -76,15 +76,17 @@ Sneakynake:
 	cmp r9, rcx				; compare offset with read bytes
 	jae .handle_tail		; if its false, continue the mainloop
 
+	;get remainder -- process boundary last
+
 ; ---------- MAIN DIAGONAL ---------------
 	; loading sequences into registers
 	vmovdqu8 zmm0, [r12] ;move read seq to zmm0
 	vmovdqu8 zmm1, [r13] ;move ref seq to zmm1
 
 	;get first and second half 
+	
 	; cmp
 	; mask???
-
 
 	
 
