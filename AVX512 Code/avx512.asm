@@ -83,10 +83,48 @@ Sneakynake:
 	vmovdqu8 zmm0, [r12] ;move read seq to zmm0
 	vmovdqu8 zmm1, [r13] ;move ref seq to zmm1
 
-	;get first and second half 
+	;get high and low & cmp
+	vpandd zmm2, zmm0, 0x0F ;read low = base1
+	vpandd zmm3, zmm1, 0x0F ;ref
+	vpcmpeqb k1, zmm2, zmm3 ;cmp if = -> result in k mask
+
+	vpsrlb zmm0, zmm0, 4 ;read high = base 2
+	vpsrlb zmm1, zmm1, 4 ;ref 
+	vpcmpeqb k2, zmm2, zmm3 ;cmp if = -> result in k mask
+
+	;high bit k masks -> prolly inc the index too for checkpoint
+	kortestq k1, k1
+	;jz .exit
+
+	;low bit k masks 
+	kortestq k2, k2
+	;jz .exit
+
+	;check if accpted counter == register length
+	kandw k3, k1, k2 ; check if all is accepted
+	knotw k3, k3 ;invert so if all accept = all will be 0
+	kortestq k3, k3 ;if all accepted -> ZF = 1
+	;TODO: add globalcounter = number of 1s here
+	jz .exit
+
 	
-	; cmp
-	; mask???
+
+
+	;mismatch
+
+	;inc globalcounter
+
+	;wat if we count the total then inc to reduce the branching
+
+	;use mask to check if 0 -> exit: update the checkpoint 
+
+	;count 1s in k masks -> inc matches?
+
+	
+
+
+	; mask -> later can be used to know how many accepts before checkpoint etc
+	; count the mask -> for how many accepts for the given
 
 	
 
@@ -98,6 +136,10 @@ Sneakynake:
 	inc qword [processed_counter]		; how many sequences has been processed
 	add r9, 64							; move onto the next byte
 	jmp .mainloop
+
+.exit:
+	;quick exit checker
+	;check if counter == number of bytes in zmm reg
 
 .handle_tail:
 	; this is for handling the remaining unused bits in the 512 bit registers
