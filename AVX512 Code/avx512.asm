@@ -78,6 +78,10 @@ Sneakynake:
 
 	;get remainder -- process boundary last
 
+	; ADDED rsi for storing the score of the best diagonal
+	mov rsi, 64				; max mismatches possible in a 64 byte register
+	; ^ this gets updated in the diagonal loops, dw about the placeholder 64
+
 ; ---------- MAIN DIAGONAL ---------------
 	; loading sequences into registers
 	vmovdqu8 zmm0, [r12] ;move read seq to zmm0
@@ -107,8 +111,80 @@ Sneakynake:
 	;TODO: add globalcounter = number of 1s here
 	jz .exit
 
-	
+; ---------- LEFT and RIGHT DIAGONAL ---------------
+; VERY INCOMPLETE
+	; loop from edit distance 1 to edit distance threshold
+	xor rdi, rdi		; the edit distance counter
+	cmp r14, 0			; check if edit distance threshold is 0
+	je .diagonals_done	; if 0, skip diagonals
 
+.diagonal_loop:
+	inc rdi			; increment edit distance
+
+; ----------- DELETION / RIGHT DIAGONAL ---------------
+	vmovdqu8 zmm1, [r13 + r9]	; move ref seq to zmm1 with offset
+	mov rax, r12 				; move read seq pointer to rax
+	; the only difference between the the left and right diagonal since ReadSeq - e
+	sub rax, rdi				; offset read seq pointer by edit distance
+	vmovdqu8 zmm0, [rax + r9]	; move read seq to zmm0
+
+	; 4-bit base logic
+	vpandd zmm2, zmm0, 0x0F		; read low
+	vpandd zmm3, zmm1, 0x0F		; ref low
+	vpcmpeqb k1, zmm2, zmm3		; k1 = low bits comparison
+
+	vpsrlb zmm0, zmm0, 4
+	vpsrlb zmm1, zmm1, 4
+
+	vpandd zmm4, zmm0, 0x0F		; read high
+	vpandd zmm5, zmm1, 0x0F		; ref high
+	vpcmpeqb k2, zmm4, zmm5		; k2 = high bits comparison
+
+	; count mismatches for this diagonal
+	kandw k3, k1, k2			; k3 = combined comparison
+	knotw k3, k3				; invert k3 to get mismatches
+	kpopcntq rax, k3			; count mismatches in k3
+	cmp rax, rsi				; compare with current mismatch count
+	cmovl rsi, rax				; update best mismatch count
+	; ^^^^ this may be wrong, but it finds the best alignment for this read sequence by keeping the lowest mismatch count
+	; so rsi starts at 64, and after checking each diagonal, we will get the mismatches in rax
+	; this will only update rsi only if the current diagonal has less mismatches than the previous best
+	; so after checking all diagonals, rsi will have the lowest mismatch count found
+
+; ----------- INSERTION / LEFT DIAGONAL ---------------
+	vmovdqu8 zmm1, [r13 + r9]	; move ref seq to zmm1 with offset
+	mov rax, r12 				; move read seq pointer to rax
+	; the only difference between the the left and right diagonal since ReadSeq + e
+	add rax, rdi				; offset read seq pointer by edit distance
+	vmovdqu8 zmm0, [rax + r9]	; move read seq to zmm0
+
+	; 4-bit base logic
+	vpandd zmm2, zmm0, 0x0F		; read low
+	vpandd zmm3, zmm1, 0x0F		; ref low
+	vpcmpeqb k1, zmm2, zmm3		; k1 = low bits comparison
+
+	vpsrlb zmm0, zmm0, 4
+	vpsrlb zmm1, zmm1, 4
+
+	vpandd zmm4, zmm0, 0x0F		; read high
+	vpandd zmm5, zmm1, 0x0F		; ref high
+	vpcmpeqb k2, zmm4, zmm5		; k2 = high bits comparison
+
+	; count mismatches for this diagonal
+	kandw k3, k1, k2			; k3 = combined comparison
+	knotw k3, k3				; invert k3 to get mismatches
+	kpopcntq rax, k3			; count mismatches in k3
+	cmp rax, r10				; compare with current mismatch count
+	cmovl rsi, rax
+
+	; check if we reached the edit distance threshold
+	cmp rdi, r14
+	jne .diagonal_loop			; loop again
+
+.diagonals_done:
+	; after checking all diagonals, rsi has the lowest mismatch count found
+	; move the best mismatch count to r10 for final checking
+	mov r10, rsi				; update mismatch count with best found
 
 	;mismatch
 
