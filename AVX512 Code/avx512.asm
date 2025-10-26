@@ -8,9 +8,8 @@ section .data
  processed_counter dq 0		; this just for counting how many sequences have been processed
  accepted dq 0				; for counting how many sequences have been accepted
  rejected dq 0				; for counting how many sequences have been rejected
- mismatches dq 0			; for counting how many mismatches have been found
- matches dq 0				; for counting how many matches have been found
  read_bytes dq 0			; for counting how many bytes have been read (for the loop)
+ global_count dq 0
 
 global SneakySnake
 global main
@@ -38,7 +37,7 @@ Sneakynake:
 	push r15
 	push rbx
 
-	sub rsp, 32			; shadow space -- remove this cuz we r callee
+	;sub rsp, 32			; shadow space -- remove this cuz we r callee
 
 	; saving arguments into registers that we wont overwrite
 	mov r11, rcx			; ReadLength
@@ -82,6 +81,7 @@ Sneakynake:
 	mov rsi, 64				; max mismatches possible in a 64 byte register
 	; ^ this gets updated in the diagonal loops, dw about the placeholder 64
 
+; NOTE: INSERT LIKE A CONDITIONAL? TO MASK/DEACTIVATE IF READ IS SHORT (1111)
 ; ---------- MAIN DIAGONAL ---------------
 	; loading sequences into registers
 	vmovdqu8 zmm0, [r12] ;move read seq to zmm0
@@ -94,23 +94,48 @@ Sneakynake:
 
 	vpsrlb zmm0, zmm0, 4 ;read high = base 2
 	vpsrlb zmm1, zmm1, 4 ;ref 
-	vpcmpeqb k2, zmm2, zmm3 ;cmp if = -> result in k mask
+	vpcmpeqb k2, zmm0, zmm1 ;cmp if = -> result in k mask
 
-	;high bit k masks -> prolly inc the index too for checkpoint
-	kortestq k1, k1
-	;jz .exit
+	knotw k1, k1 
+	knotw k2, k2
 
-	;low bit k masks 
-	kortestq k2, k2
-	;jz .exit
-
-	;check if accpted counter == register length
+	;check if accpted counter == register length -> check if all same
 	kandw k3, k1, k2 ; check if all is accepted
-	knotw k3, k3 ;invert so if all accept = all will be 0
 	kortestq k3, k3 ;if all accepted -> ZF = 1
-	;TODO: add globalcounter = number of 1s here
 	jz .exit
 
+	;move to register <- k1,2
+	;get first 1 (mismatch cuz we inverted it)
+	; do *2 (or *2 +1) == index and globalcount	
+	;compare index position (whoever smallest/if same always pick k1)
+	
+	;borrow stack 
+	sub rsp, 16
+
+	kmovq [rsp], k1
+	kmovq [rsp + 8], k2
+
+	mov rax, [rsp]
+	tzcnt rcx, rax
+	shl rcx, 1
+	
+	mov rax, [rsp + 8]
+	tzcnt rbx, rax
+	lea rbx, [rbx*2+1]
+	mov rax, rbx
+
+	cmp rax, rcx
+	je .pick1
+	jl .pick2
+	mov qword [global_count], rcx
+
+	.pick1:
+		mov qword [global_count], rcx
+	
+	.pick2:
+		mov qword[global_count], rax
+
+	add rsp, 16
 ; ---------- LEFT and RIGHT DIAGONAL ---------------
 ; VERY INCOMPLETE
 	; loop from edit distance 1 to edit distance threshold
@@ -216,6 +241,7 @@ Sneakynake:
 .exit:
 	;quick exit checker
 	;check if counter == number of bytes in zmm reg
+
 
 .handle_tail:
 	; this is for handling the remaining unused bits in the 512 bit registers
