@@ -7,14 +7,13 @@ bits 64
 section .data
     processed_counter dq 0
     read_bytes dq 0
-    global_counter dq 0
+    global_counter dq 0 ;note: reset this after each all loop
     counter dq 0
 
 section .rodata
     align 64
 	four_mask:  times 64 db 0x0F      ; used to mask nibbles
 	f0_mask: times 64 db 0xF0
-	four:       db 4                  ; shift count (byte) for >>4
     
 section .text
 global SneakySnake
@@ -87,8 +86,7 @@ SneakySnake:
 
         ;do smthn about the 1111s in the sequences
         ;-------- MAIN DIAGONAL -------------
-        vmovdqu8 zmm7, [four] 
-        
+    
 		; base2
 		vpandd   zmm2, zmm0, [four_mask]   ; read low
 		vpandd   zmm3, zmm1, [four_mask]   ; ref  low
@@ -96,8 +94,8 @@ SneakySnake:
 		; base1
 		vpandd   zmm4, zmm0, [f0_mask]     ;keep (new) low 4 bits
 		vpandd   zmm5, zmm1, [f0_mask]
-		vpsrlvd  zmm4, zmm4, zmm7          ; read >> 4
-		vpsrlvd  zmm5, zmm5, zmm7          ; ref  >> 4
+		vpsrld  zmm4, zmm4, 4          ; read >> 4
+		vpsrld  zmm5, zmm5, 4          ; ref  >> 4
 		
 		vpcmpeqb k3,   zmm2, zmm3          ; k3 = base2 (end)
 		vpcmpeqb k4,   zmm4, zmm5          ; k4 = base1 (start)
@@ -106,10 +104,13 @@ SneakySnake:
         knotq k4, k4 ;invert -> mismatch = 1
 
         ;check if all bases matched
-        korq k5, k3, k4 ;or/and????
-        kortestq k5, k5
-        jz .exit
+        korq k5, k3, k4 
+        ktestq k5, k5
+        jnz .exit1
+		add qword[global_counter], 128 ;not sure -> cuz like if less than a certain threshold tail handling...
+		;do we always cmp if its same length then quick exit???
 
+	.exit1:
         kmovq rbx, k3
         kmovq r10, k4
 
@@ -122,7 +123,7 @@ SneakySnake:
         ;compare index position (whoever smallest/if same always pick k3)
         cmp rbx, r10
         cmovnb rbx, r10
-        mov [global_count], rbx
+        mov [global_counter], rbx
 		
 ; ---------- LEFT and RIGHT DIAGONAL ---------------
 ; VERY INCOMPLETE
@@ -225,11 +226,6 @@ SneakySnake:
 	inc qword [processed_counter]		; how many sequences has been processed
 	add r9, 64							; move onto the next byte
 	jmp .mainloop
-
-.exit:
-	;quick exit checker
-	;check if counter == number of bytes in zmm reg
-
 
 .handle_tail:
 	; this is for handling the remaining unused bits in the 512 bit registers
