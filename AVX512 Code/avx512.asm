@@ -245,12 +245,53 @@ Sneakynake:
 
 .handle_tail:
 	; this is for handling the remaining unused bits in the 512 bit registers
-	mov rcx, [read_bytes]
+	mov rcx, [read_bytes] ;read_bytes = remaining bytes for tail to handle
 	sub rcx, r9
 	test rcx, rcx
 	jz .check_mismatches
 
 	; FINISH THIS TAIL HANDLING
+	lea rsi, [r12 + r9]
+	lea rdi, [r13 + r9]
+
+	;loop indexing (0 .. remaining-1)
+	xor rbx, rbx
+
+.tail_loop:
+	cmp rbx, rcx
+	jae .tail_done
+
+   	mov al, byte [rsi + rbx]   ; read byte
+   	mov dl, byte [rdi + rbx]   ; ref byte
+
+	; compare low nibble: (al & 0x0F) vs (dl & 0x0F)
+	movzx rax, al
+	and rax, 0x0F
+	movzx rdx, dl
+	and rdx, 0x0F
+	cmp rax, rdx
+	je .no_inc_low
+	inc r10                    ; increment mismatch counter
+
+	.no_inc_low:
+
+	; compare high nibble: (al >> 4) vs (dl >> 4)
+	movzx rax, al
+	shr rax, 4
+	movzx rdx, dl
+	shr rdx, 4
+	cmp rax, rdx
+	je .no_inc_high
+	inc r10
+
+	.no_inc_high:
+
+	inc rbx
+	jmp .tail_loop
+
+	.tail_done:
+   	; finished tail; fall through to mismatch check
+	jmp .check_mismatches ;idt this is needed but worried about all the jumping
 
 .check_mismatches:
 	; checking if mismatches are within the edit distance threshold
