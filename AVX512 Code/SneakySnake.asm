@@ -12,14 +12,11 @@ section .data
 
 section .rodata
     align 64
-    ones_mask: db 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
-                db 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
-                db 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
-                db 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
-    four_mask: times 64 db 0x0F ;do we broadcast this to a zmm?
-    four: db 4
+	four_mask:  times 64 db 0x0F      ; used to mask nibbles
+	f0_mask: times 64 db 0xF0
+	four:       db 4                  ; shift count (byte) for >>4
     
-
+section .text
 global SneakySnake
 
 ;int SneakySnake(int ReadLength, char* ReadSeq, char* RefSeq, int EditThreshold, int IterationNo)
@@ -90,49 +87,43 @@ SneakySnake:
 
         ;do smthn about the 1111s in the sequences
         ;-------- MAIN DIAGONAL -------------
-        vpandd zmm2, zmm0, [four_mask] ;read low = base1
-        vpandd zmm3, zmm1, [four_mask] ;ref
-        vpcmpeqb k3, zmm2, zmm3 ;cmp if = -> result in k3
+        vmovdqu8 zmm7, [four] 
+        
+		; base2
+		vpandd   zmm2, zmm0, [four_mask]   ; read low
+		vpandd   zmm3, zmm1, [four_mask]   ; ref  low
 
-        vpbroadcast zmm31, [four]
-        vpsrlvb zmm0, zmm0, zmm31 ;read high = base2
-        vpsrlvb zmm1, zmm1, zmm31 ;ref
-        vpcmpeqb k4, zmm0, zmm1 ;cmp if = -> result in k4
+		; base1
+		vpandd   zmm4, zmm0, [f0_mask]     ;keep (new) low 4 bits
+		vpandd   zmm5, zmm1, [f0_mask]
+		vpsrlvd  zmm4, zmm4, zmm7          ; read >> 4
+		vpsrlvd  zmm5, zmm5, zmm7          ; ref  >> 4
+		
+		vpcmpeqb k3,   zmm2, zmm3          ; k3 = base2 (end)
+		vpcmpeqb k4,   zmm4, zmm5          ; k4 = base1 (start)
 
         knotq k3, k3
         knotq k4, k4 ;invert -> mismatch = 1
 
         ;check if all bases matched
-        kandq k5, k3, k4
+        korq k5, k3, k4 ;or/and????
         kortestq k5, k5
         jz .exit
 
-        ;borrow stack
-        sub rsp, 16
+        kmovq rbx, k3
+        kmovq r10, k4
 
-        kmovq [rsp], k3
-        kmovq [rsp + 8], k4
-
-        mov rax, [rsp]
-        tzcnt rbx, rax ;get the index
+        tzcnt rbx, rbx ;get the index
         shl rbx, 1 ;2i -> index and globalcount
 
-        mov r10, [rsp + 8]
-        tzcnt rax, r10
-        lea rax, [rax*2+1] ;2i+1
-        mov r10, rax
+        tzcnt r10, r10
+        lea r10, [r10*2+1] ;2i+1
 
         ;compare index position (whoever smallest/if same always pick k3)
         cmp rbx, r10
-        je .pick1
-        cmova rbx, r10
-        mov qword[global_count], rbx
-
-        .pick1:
-            mov qword[global_count], rbx
-
-        add rsp, 16
-        xor rax, rax
+        cmovnb rbx, r10
+        mov [global_count], rbx
+		
 ; ---------- LEFT and RIGHT DIAGONAL ---------------
 ; VERY INCOMPLETE
 	; loop from edit distance 1 to edit distance threshold
@@ -143,7 +134,7 @@ SneakySnake:
 .diagonal_loop:
 	inc rdi			; increment edit distance
 
-; ----------- DELETION / RIGHT DIAGONAL ---------------
+; ----------- DELETION / RIGHT DIAGONA ---------------
 	vmovdqu8 zmm1, [r13 + r9]	; move ref seq to zmm1 with offset
 	mov rax, r12 				; move read seq pointer to rax
 	; the only difference between the the left and right diagonal since ReadSeq - e
