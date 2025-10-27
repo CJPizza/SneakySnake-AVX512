@@ -293,6 +293,56 @@ Sneakynake:
    	; finished tail; fall through to mismatch check
 	jmp .check_mismatches ;idt this is needed but worried about all the jumping
 
+; ============================================================
+; =============  Masked Version for Tail handling (prototype) =======
+; ============================================================
+; 
+;hopefully this is correct
+;
+; Logic:
+;   1. Compute bitmask k1 = (1 << rcx) - 1 for rcx leftover bytes.
+;   2. Use kmovq to load mask into k1.
+;   3. Perform masked loads from ReadSeq and RefSeq.
+;   4. Compare low and high nibbles in parallel.
+;   5. Count mismatched nibbles using popcnt.
+;
+;
+; ============================================================
+; the define is used to isolate the lower nibble so upper bits don't interfere
+;%define LOW_NIBBLE_MASK 0x0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F
+;
+;   mov rax, 1
+;   shl rax, cl                 ; rax = 1 << rcx
+;   dec rax                     ; rax = (1 << tail_len) - 1
+;   kmovq k1, rax               ; load mask bits into k1
+;
+;   ; Load up to 63 bytes using mask
+;   vmovdqu8 zmm0{k1}{z}, [rsi] ; ReadSeq tail bytes
+;   vmovdqu8 zmm1{k1}{z}, [rdi] ; RefSeq tail bytes
+;
+;   ; --- Compare low nibbles ---
+;   vpbroadcastb zmm2, [low_nibble_mask] ; 
+;   vpand zmm3, zmm0, zmm2      ; isolate low nibble of ReadSeq
+;   vpand zmm4, zmm1, zmm2      ; isolate low nibble of RefSeq
+;   vpcmpneqb k2, zmm3, zmm4    ; mismatch mask for low nibble
+;
+;   ; --- Compare high nibbles ---
+;   vpsrlb zmm5, zmm0, 4
+;   vpsrlb zmm6, zmm1, 4
+;   vpcmpneqb k3, zmm5, zmm6    ; mismatch mask for high nibble
+;
+;   ; Combine mismatch masks and count
+;   korq k4, k2, k3
+;   kortestq k4, k4             ; sets flags for mismatches
+;   kmovq rax, k4               ; move mask bits to GPR
+;   popcnt rax, rax             ; count number of mismatches
+;   add r10, rax                ; accumulate mismatch count
+;
+;   jmp .check_mismatches
+;
+; 
+; ============================================================
+
 .check_mismatches:
 	; checking if mismatches are within the edit distance threshold
 	mov rax, r10		; number of mismatches
