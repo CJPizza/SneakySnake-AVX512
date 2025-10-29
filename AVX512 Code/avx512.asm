@@ -18,6 +18,15 @@ section .data
 global SneakySnake
 global main
 
+; checkpoint notes:
+; basically what happens is that the checkpoints prevent wasting blocks worth of computation
+; by knowing the running total at all times for early decision-making, reacting immediately
+; the flow: update -> check **we needa keep checking** -> decide
+; #1 checkpoint for track position to know where we are in the sequence
+; #2 checkpoint know how bad alignment is + help decide as to not waste time
+; #3 checkpoint to mark transition, tail uses different code path
+; #4 checkpoint final accumulation so it includes all data in decision
+
 ; the main prototype:
 ; int SneakySnake(int ReadLength, char* ReadSeq, char* RefSeq, int EditThreshold, int IterationNo)
 ; parameters and their corresponding registers (I AM NOT ENTIRELY SURE WITH THIS):
